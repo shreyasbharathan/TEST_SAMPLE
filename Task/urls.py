@@ -2,7 +2,7 @@ from django.urls import path
 
 from leads.views import lead_details,lead_list
 
-from .views import create_task,list_task,completed_tasks
+from .views import create_task, lead_filter,list_task,completed_tasks
 from . import views  # Assuming your function is in views.py
 
 urlpatterns = [
@@ -14,5 +14,6 @@ urlpatterns = [
     path('<int:lead_id>/', lead_details),
    
     path('exports/',lead_list),
+    path('leads/', lead_filter),
 
 ]

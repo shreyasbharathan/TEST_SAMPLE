@@ -51,21 +51,24 @@ from .models import Lead
 
 class CreateLeadSerializer(serializers.ModelSerializer):
 
-    source_platform = serializers.CharField(write_only=True)
-    source_form = serializers.CharField(write_only=True, required=False)
-    source_url = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Lead
         fields = [
             "first_name",
             "last_name",
-            "phone",
+            "address",
+            "occupation",
+            "mobile_number",
+            "phone_number",
             "email",
-            "source_platform",
-            "source_form",
-            "source_url",
-            "assigned_to",
+            "product_type",
+            "delivery_channel",
+            "is_pep",
+            "responsible",
+            "stage",
+            "created_at",
+            "updated_at",
             "status",
             "progress_score",
             "is_favorite",
@@ -74,9 +77,6 @@ class CreateLeadSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
     
-        platform = validated_data.pop("source_platform")
-
-        validated_data["source"] = platform
 
         return Lead.objects.create(**validated_data)
 

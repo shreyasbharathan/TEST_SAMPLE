@@ -12,7 +12,7 @@ from .models import  Task
 # from Policy.models import Policy
 from leads.models import Lead
 from rest_framework import status,viewsets
-from .serializers import LeadListSerializer, TaskSerializer, WorkflowStatsSerializer
+from .serializers import LeadListSerializer, LeadSerializer, TaskSerializer, WorkflowStatsSerializer
 
 @api_view(['GET'])
 def get_workflow_stats(request):
@@ -113,6 +113,32 @@ def lead_list(request):
         "total_count": leads.count(),
         "results": serializer.data
     })
+
+
+@api_view(['GET'])
+def lead_filter(request):
+    filter_type = request.GET.get('filter')  # 7days / 30days / year
+
+    leads = Lead.objects.all()
+
+    today = timezone.now()
+
+    if filter_type == '7days':
+        date_from = today - timedelta(days=7)
+        leads = leads.filter(created_at__gte=date_from)
+
+    elif filter_type == '30days':
+        date_from = today - timedelta(days=30)
+        leads = leads.filter(created_at__gte=date_from)
+
+    elif filter_type == 'year':
+        leads = leads.filter(created_at__year=today.year)
+
+    serializer = LeadSerializer(leads, many=True)
+    return Response(serializer.data)
+
+
+
 
 
 

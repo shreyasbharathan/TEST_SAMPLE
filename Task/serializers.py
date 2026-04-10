@@ -1,5 +1,9 @@
+from datetime import timedelta, timezone
+
 from deals.models import Lead
+from leads.serializers import LeadSerializer
 from rest_framework import serializers
+from leads.models import Lead
 
 from .models import Task
 
@@ -61,6 +65,13 @@ class LeadListSerializer(serializers.ModelSerializer):
             "status": obj.status,
             "progress_score": obj.progress_score,
         }
+
+class LeadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lead
+        fields = '__all__'
+    
+
 
     
 

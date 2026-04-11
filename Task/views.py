@@ -130,9 +130,14 @@ def lead_filter(request):
     elif filter_type == '30days':
         date_from = today - timedelta(days=30)
         leads = leads.filter(created_at__gte=date_from)
+    elif filter_type == '90days':
+        date_from = today - timedelta(days=90)
+        leads = leads.filter(created_at__gte=date_from)
 
     elif filter_type == 'year':
         leads = leads.filter(created_at__year=today.year)
+    else:
+        return Response({"error": "Invalid filter type"}, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = LeadSerializer(leads, many=True)
     return Response(serializer.data)

@@ -166,3 +166,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+
+# AUTH_USER_MODEL = 'api.CustomUser'

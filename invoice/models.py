@@ -140,3 +140,38 @@ class StatusOverview(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     pending_at = models.CharField(max_length=100)
     assigned_user = models.CharField(max_length=100)
+
+
+
+class Reconciliation(models.Model):
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="reconciliations")
+
+    rec_id = models.CharField(max_length=20, unique=True)
+
+    policy_number = models.CharField(max_length=100)
+    customer_name = models.CharField(max_length=100)
+
+    billed_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    insurer_amount = models.DecimalField(max_digits=12, decimal_places=2)
+
+    difference = models.DecimalField(max_digits=12, decimal_places=2)
+
+    due_date = models.DateField()
+
+    STATUS_CHOICES = (
+        ('matched', 'Matched'),
+        ('mismatch', 'Mismatch'),
+        ('partial', 'Partial Match'),
+        ('resolved', 'Resolved'),
+        ('escalated', 'Escalated'),
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='mismatch')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "reconciliations"
+
+    def __str__(self):
+        return self.rec_id

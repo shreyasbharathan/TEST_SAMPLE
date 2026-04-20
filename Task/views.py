@@ -8,11 +8,18 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
+
+from invoice.models import Invoice
 from .models import  Task
 # from Policy.models import Policy
 from leads.models import Lead
 from rest_framework import status,viewsets
 from .serializers import LeadListSerializer, LeadSerializer, TaskSerializer, WorkflowStatsSerializer
+from invoice.models import Invoice, StatusOverview
+
+
+
+# #####   Akshaya  #####
 
 @api_view(['GET'])
 def get_workflow_stats(request):
@@ -142,6 +149,45 @@ def lead_filter(request):
     serializer = LeadSerializer(leads, many=True)
     return Response(serializer.data)
 
+
+
+@api_view(['GET'])
+def get_pending_tasks(request):
+
+    stats_data = Invoice.objects.aggregate(
+
+        leads=Count('id', filter=Q(status_logs__status='leads')),
+
+        documents=Count(
+            'id',
+            filter=Q(status_logs__status='documents') &
+            (
+                Q(attachments__eid__isnull=True) |
+                Q(attachments__passport__isnull=True)
+            )
+        ),
+
+        quotation=Count(
+            'id',
+            filter=Q(status_logs__status='quotation') &
+            Q(attachments__policy_schedule__isnull=False)
+        ),
+
+        acceptance=Count('id', filter=Q(status_logs__status='acceptance')),
+
+        issuance=Count('id', filter=Q(status_logs__status='issuance')),
+
+        billing=Count(
+            'id',
+            filter=Q(status_logs__status='billing') &
+            Q(attachments__credit_note__isnull=True)
+        ),
+
+        claims=Count('id', filter=Q(status_logs__status='claims'))
+    )
+
+    serializer = WorkflowStatsSerializer(stats_data)
+    return Response(serializer.data)
 
 
 

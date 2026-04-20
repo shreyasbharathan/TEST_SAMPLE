@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import RegisterSerializer
+from .serializers import ChangePasswordSerializer, RegisterSerializer
 
 # Create your views here.
 from rest_framework.response import Response
@@ -124,3 +124,41 @@ def list_roles(request):
     data = [{"id": r.id, "name": r.name} for r in roles]
 
     return Response({"roles": data})
+
+
+
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def change_password(request):
+#     serializer = ChangePasswordSerializer(data=request.data)
+
+#     if serializer.is_valid():
+#         user = request.user
+
+#         # Check old password
+#         if not user.check_password(serializer.validated_data['old_password']):
+#             return Response({"error": "Old password is incorrect"}, status=400)
+
+#         # Set new password
+#         user.set_password(serializer.validated_data['new_password'])
+#         user.save()
+
+#         return Response({"message": "Password updated successfully"})
+
+#     return Response(serializer.errors, status=400)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    serializer = ChangePasswordSerializer(data=request.data)
+
+    if serializer.is_valid():
+        user = request.user
+
+        # Set new password directly
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        return Response({"message": "Password updated successfully"}, status=200)
+
+    return Response(serializer.errors, status=400)

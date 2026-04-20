@@ -1,5 +1,11 @@
 from django.db import models
 
+from Policys.models import Policy
+# from invoice.models import Invoice, Attachment, StatusOverview
+
+
+#   #### Akshaya   #####
+
 # Create your models here.
 class Invoice(models.Model):
 
@@ -72,7 +78,6 @@ class CooperativeCustomer(models.Model):
     nationality = models.CharField(max_length=50, blank=True, null=True)
     date_of_incorporation = models.DateField(blank=True, null=True)
     company_activity = models.TextField(blank=True, null=True)
-    aml_trace = models.BooleanField(default=False)
 
     class Meta:
         db_table = "cooperative_customers"
@@ -127,11 +132,19 @@ class Attachment(models.Model):
     policy_schedule = models.FileField(upload_to="documents/", blank=True, null=True)
     credit_note = models.FileField(upload_to="documents/", blank=True, null=True)
     debit_note = models.FileField(upload_to="documents/", blank=True, null=True)
+
+
+    policy_certificate = models.FileField(upload_to="documents/", blank=True, null=True)
+    credit_note_tax_invoice = models.FileField(upload_to="documents/", blank=True, null=True)
+    wording = models.FileField(upload_to="documents/", blank=True, null=True)
+    
+    # Catch-all
     other_documents = models.FileField(upload_to="documents/", blank=True, null=True)
 
-    system_generated_1 = models.BooleanField(default=False)
-    system_generated_2 = models.BooleanField(default=False)
-    system_generated_3 = models.BooleanField(default=False)
+    def __str__(self):
+        return f"Attachments for Invoice {self.invoice_id}"
+
+
 
 class StatusOverview(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="status_logs")
@@ -142,13 +155,37 @@ class StatusOverview(models.Model):
     assigned_user = models.CharField(max_length=100)
 
 
+class UBODetail(models.Model):
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name="ubo_details"
+    )
+
+    name = models.CharField(max_length=100)
+    eid_passport = models.CharField(max_length=100)
+    dob = models.DateField(blank=True, null=True)
+    nationality = models.CharField(max_length=50, blank=True, null=True)
+    contact_number = models.CharField(max_length=20, blank=True, null=True)
+    designation = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+
 
 class Reconciliation(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="reconciliations")
 
     rec_id = models.CharField(max_length=20, unique=True)
 
-    policy_number = models.CharField(max_length=100)
+    policy = models.ForeignKey(
+        Policy,
+        on_delete=models.CASCADE,
+        related_name="reconciliations"
+    )
+    statement_file = models.FileField(upload_to="reconciliation_files/", null=True, blank=True)
+
     customer_name = models.CharField(max_length=100)
 
     billed_amount = models.DecimalField(max_digits=12, decimal_places=2)

@@ -1,16 +1,22 @@
-from datetime import timedelta
+from datetime import timedelta, timezone
 from turtle import pd
+from urllib import request
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from invoice.models import Invoice
-from invoice.serializer import BillingSummarySerializer, ImportStatementSerializer, InvoiceListSerializer, InvoiceSerializer
+from invoice.models import Invoice, Reconciliation
+from invoice.serializer import BillingSummarySerializer, ImportStatementSerializer, InvoiceListSerializer, InvoiceSerializer, TransactionListSerializer
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils.timezone import now
+import os
+from django.conf import settings
+from .models import Reconciliation, Transaction
+from invoice.serializer import ReconciliationListSerializer
 
-from invoice.serializer import InvoiceSerializer
+
+from invoice.serializer import InvoiceSerializer, InvoiceListSerializer, BillingSummarySerializer, ImportStatementSerializer               
 
 @api_view(['POST'])
 def create_invoice(request):
@@ -28,47 +34,6 @@ def create_invoice(request):
     return Response(serializer.errors, status=400)
 
 
-
-# @api_view(['GET'])
-# def invoice_list(request):
-#     print("QUERY PARAMS:", request.GET)  # Debugging line to check incoming query params
-#     # 🔹 Query params
-#     status_filter = request.GET.get('status')   # paid / pending / overdue
-#     search = request.GET.get('search')          # search term
-#     page = int(request.GET.get('page', 1))
-
-#     # 🔹 Base queryset
-#     invoices = Invoice.objects.all().order_by('-id')
-#     print("Initial Invoices Count:", invoices.count())  # Debugging line to check initial count
-#     # 🔍 SEARCH (name + policy number)
-#     if search:
-#         invoices = invoices.filter(
-#             Q(individual__name__icontains=search) |
-#             Q(cooperative__company_name__icontains=search) |
-#             Q(transactions__policy_number__icontains=search)
-#         ).distinct()
-
-#     # 🔎 STATUS FILTER
-#     if status_filter:
-#         filtered_invoices = []
-
-#         for inv in invoices:
-#             status_obj = inv.status_logs.last()
-
-#             if status_obj and status_obj.status.lower() == status_filter.lower():
-#                 filtered_invoices.append(inv)
-
-#         invoices = filtered_invoices
-
-#     paginator = Paginator(invoices, 10)
-#     page_obj = paginator.get_page(page)
-
-#     serializer = InvoiceListSerializer(page_obj, many=True)
-
-#     return Response({
-#         "results_found": paginator.count,
-#         "data": serializer.data
-#     })
 
 @api_view(['GET'])
 def invoice_list(request):
@@ -173,6 +138,40 @@ def billing_summary(request):
 
     return Response(serializer.data)
 
+# @api_view(['POST'])
+# def import_statement(request):
+#     serializer = ImportStatementSerializer(data=request.data)
+
+#     if not serializer.is_valid():
+#         return Response(serializer.errors, status=400)
+
+#     file = serializer.validated_data['file']
+
+#     try:
+#         # 🔹 Read file (CSV or Excel)
+#         if file.name.endswith('.csv'):
+#             df = pd.read_csv(file)
+#         elif file.name.endswith('.xlsx') or file.name.endswith('.xls'):
+#             df = pd.read_excel(file)
+#         else:
+#             return Response({"error": "Unsupported file format"}, status=400)
+
+#         # 🔹 Convert data to list (optional)
+#         data = df.to_dict(orient="records")
+
+#         # 🔹 Example: just return count
+#         return Response({
+#             "message": "File uploaded successfully",
+#             "total_records": len(data),
+#             "preview": data[:5]   # first 5 rows
+#         })
+
+#     except Exception as e:
+#         return Response({"error": str(e)}, status=500)
+
+
+
+
 @api_view(['POST'])
 def import_statement(request):
     serializer = ImportStatementSerializer(data=request.data)
@@ -181,27 +180,186 @@ def import_statement(request):
         return Response(serializer.errors, status=400)
 
     file = serializer.validated_data['file']
+    file_name = file.name.lower()
 
     try:
-        # 🔹 Read file (CSV or Excel)
-        if file.name.endswith('.csv'):
-            df = pd.read_csv(file)
-        elif file.name.endswith('.xlsx') or file.name.endswith('.xls'):
-            df = pd.read_excel(file)
+        # ✅ PDF
+        if file_name.endswith('.pdf'):
+
+            file_path = os.path.join(settings.MEDIA_ROOT, file.name)
+
+            with open(file_path, 'wb+') as f:
+                for chunk in file.chunks():
+                    f.write(chunk)
+
+            return Response({
+                "message": "PDF uploaded successfully",
+                "type": "pdf",
+                "file_url": request.build_absolute_uri(settings.MEDIA_URL + file.name)
+            })
+
+        # ✅ Image
+        elif file_name.endswith(('.jpg', '.jpeg', '.png')):
+
+            file_path = os.path.join(settings.MEDIA_ROOT, file.name)
+
+            with open(file_path, 'wb+') as f:
+                for chunk in file.chunks():
+                    f.write(chunk)
+
+            return Response({
+                "message": "Image uploaded successfully",
+                "type": "image",
+                "file_url": request.build_absolute_uri(settings.MEDIA_URL + file.name)
+            })
+
         else:
-            return Response({"error": "Unsupported file format"}, status=400)
-
-        # 🔹 Convert data to list (optional)
-        data = df.to_dict(orient="records")
-
-        # 🔹 Example: just return count
-        return Response({
-            "message": "File uploaded successfully",
-            "total_records": len(data),
-            "preview": data[:5]   # first 5 rows
-        })
+            return Response({
+                "error": "Only PDF, JPG, PNG allowed"
+            }, status=400)
 
     except Exception as e:
         return Response({"error": str(e)}, status=500)
     
 
+    
+
+@api_view(['PATCH'])
+def resolve_reconciliation(request, id):
+    try:
+        rec = Reconciliation.objects.get(id=id)
+    except Reconciliation.DoesNotExist:
+        return Response({"error": "Not found"}, status=404)
+
+    rec.status = "resolved"
+    rec.save()
+
+    return Response({
+        "message": "Reconciliation resolved successfully",
+        "rec_id": rec.rec_id,
+        "status": rec.status
+    })
+
+@api_view(['POST'])
+def escalate_reconciliation(request, id):
+    try:
+        rec = Reconciliation.objects.get(id=id)
+    except Reconciliation.DoesNotExist:
+        return Response({"error": "Not found"}, status=404)
+
+    rec.status = "escalated"
+    rec.save()
+
+    return Response({
+        "message": "Reconciliation escalated successfully",
+        "rec_id": rec.rec_id,
+        "status": rec.status
+    })
+
+
+
+
+@api_view(['GET'])
+def reconciliation_table(request):
+
+    queryset = Reconciliation.objects.select_related(
+        'invoice', 'policy'
+    ).all().order_by('-created_at')
+
+    serializer = ReconciliationListSerializer(queryset, many=True)
+
+    return Response({
+        "results_found": queryset.count(),
+        "data": serializer.data
+    })
+
+
+@api_view(['GET'])
+def transaction_dashboard(request):
+
+    total = Transaction.objects.count()
+
+    active = Transaction.objects.filter(
+        policy_number__isnull=False
+    ).count()
+
+    pending_payment = Transaction.objects.filter(
+        net_due__gt=0
+    ).count()
+
+    processing = Transaction.objects.filter(
+        policy_number__isnull=True
+    ).count()
+
+    return Response({
+        "total_policies": total,
+        "active": active,
+        "pending_payment": pending_payment,
+        "processing": processing
+    })
+
+
+
+@api_view(['GET'])
+def transaction_list(request):
+
+    queryset = Transaction.objects.all().order_by('-invoice_date')
+
+    # ✅ Optional filter (7, 30, 90 days)
+    days = request.GET.get('days')
+    if days:
+        queryset = queryset.filter(
+            invoice_date__gte=now().date() - timedelta(days=int(days))
+        )
+
+    serializer = TransactionListSerializer(queryset, many=True)
+
+    return Response({
+        "total": queryset.count(),
+        "data": serializer.data
+    })
+
+
+
+@api_view(['GET'])
+def invoice_list_filter(request):
+    days = request.GET.get('days')  # 7, 30, 90
+    page = request.GET.get('page', 1)
+
+    invoices = Invoice.objects.all().order_by('-creation_date')
+
+    # ✅ FILTER LOGIC
+    if days:
+        try:
+            days = int(days)
+            from_date = timezone.now().date() - timedelta(days=days)
+            invoices = invoices.filter(issue_date__gte=from_date)
+        except:
+            pass
+
+    # ✅ PAGINATION
+    paginator = Paginator(invoices, 10)  # 10 records per page
+    page_obj = paginator.get_page(page)
+
+    serializer = InvoiceListSerializer(page_obj, many=True)
+
+    # ✅ TABLE FORMAT
+    table_data = []
+    for item in serializer.data:
+        table_data.append({
+            "invoice_id": item["invoice_id"],
+            "policy_number": item["policy_number"],
+            "customer_name": item["customer_name"],
+            "premium": item["premium"],
+            "issue_date": item["issue_date"],
+            "due_date": item["due_date"],
+            "status": item["status"],
+            "available_actions": item["available_actions"],
+        })
+
+    return Response({
+        "results_found": paginator.count,
+        "total_pages": paginator.num_pages,
+        "current_page": page_obj.number,
+        "data": table_data
+    })

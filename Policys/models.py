@@ -3,6 +3,8 @@ from django.db import models
 # Create your models here.
 from django.db import models
 
+# ########   Akshaya   ###
+
 class Policy(models.Model):
     # --- Identification & Primary Key ---
     i_policy_id = models.IntegerField(primary_key=True)  # The link for other tables

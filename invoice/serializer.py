@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Invoice, IndividualCustomer
+from .models import Invoice, IndividualCustomer, Reconciliation, Transaction
+from Policys.models import Policy
 
 # 🔹 Individual Serializer
 class IndividualCustomerSerializer(serializers.ModelSerializer):
@@ -124,6 +125,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
     delivery_channel = serializers.CharField()
     pep = serializers.BooleanField()
     remarks = serializers.CharField()
+    issue_date = serializers.DateField(source='creation_date')
 
     # 🔹 Customer
     customer_name = serializers.SerializerMethodField()
@@ -276,5 +278,97 @@ class BillingSummarySerializer(serializers.Serializer):
 class ImportStatementSerializer(serializers.Serializer):
     file = serializers.FileField()
 
+class ReconciliationListSerializer(serializers.ModelSerializer):
+
+    invoice_id = serializers.SerializerMethodField()
+    policy_number = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
+    actions = serializers.SerializerMethodField()   # ✅ NEW
+
+    class Meta:
+        model = Reconciliation
+        fields = [
+            "rec_id",
+            "invoice_id",
+            "policy_number",
+            "customer_name",
+            "billed_amount",
+            "insurer_amount",
+            "difference",
+            "due_date",
+            "status",
+            "file_url",
+            "actions",   # ✅ include here
+            "created_at",
+        ]
+
+    def get_invoice_id(self, obj):
+        return f"INV-{obj.invoice.id:03d}" if obj.invoice else None
+
+    def get_policy_number(self, obj):
+        return obj.policy.pol_no if obj.policy else None
+
+    def get_file_url(self, obj):
+        if obj.statement_file:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.statement_file.url) if request else obj.statement_file.url
+        return None
+
+    # ✅ ACTIONS LOGIC
+    def get_actions(self, obj):
+        if obj.status == "mismatch":
+            return ["resolve", "escalate", "documents"]
+        elif obj.status == "partial":
+            return ["resolve", "escalate"]
+        elif obj.status == "resolved":
+            return ["documents"]
+        elif obj.status == "escalated":
+            return ["resolve", "documents"]
+        elif obj.status == "matched":
+            return ["documents"]
+        return []
+    
 
 
+class TransactionListSerializer(serializers.ModelSerializer):
+
+    policy_id = serializers.CharField(source='policy_number')
+    customer_name = serializers.CharField(source='customer')
+    product_type = serializers.CharField(source='policy_type')
+    insurer = serializers.CharField(source='insurer_name')
+    premium = serializers.CharField(source='total_premium')
+    issue_date = serializers.CharField(source='invoice_date')
+
+    payment_status = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    method = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = [
+            'id',
+            'policy_id',
+            'customer_name',
+            'product_type',
+            'insurer',
+            'premium',
+            'issue_date',
+            'payment_status',
+            'status',
+            'method',
+        ]
+
+    def get_payment_status(self, obj):
+        if obj.net_due == 0:
+            return "Paid"
+        elif obj.net_due > 0:
+            return "Pending"
+        return "Not-Initiated"
+
+    def get_status(self, obj):
+        if obj.policy_number:
+            return "Active"
+        return "Pending"
+
+    def get_method(self, obj):
+        return "API" if obj.direct_payment else "Email"

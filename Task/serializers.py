@@ -72,6 +72,15 @@ class LeadSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
 
+class WorkflowStatsSerializer(serializers.Serializer):
+    leads = serializers.IntegerField()
+    documents = serializers.IntegerField()
+    quotation = serializers.IntegerField()
+    acceptance = serializers.IntegerField()
+    issuance = serializers.IntegerField()
+    billing = serializers.IntegerField()
+    claims = serializers.IntegerField()
+
 
     
 

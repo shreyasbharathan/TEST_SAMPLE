@@ -1,7 +1,7 @@
 from datetime import timedelta, timezone
 
 from deals.models import Lead
-from leads.serializers import LeadSerializer
+from leads.serializers import LeadListSerializer
 from rest_framework import serializers
 from leads.models import Lead
 
@@ -23,8 +23,8 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class LeadListSerializer(serializers.ModelSerializer):
 
+class LeadListSerializer(serializers.ModelSerializer):
     contact = serializers.SerializerMethodField()
     timestamps = serializers.SerializerMethodField()
     source_info = serializers.SerializerMethodField()
@@ -32,38 +32,33 @@ class LeadListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lead
-        fields = [
-            "id",
-            "contact",
-            "timestamps",
-            "source_info",
-            "assignment",
-            "is_favorite",
-        ]
+        fields = "__all__"  # include all fields
 
-    # ---- CONTACT ----
     def get_contact(self, obj):
         return {
             "first_name": f"{obj.first_name} {obj.last_name or ''}".strip(),
-            "phone": obj.phone,
+            "phone": obj.mobile_number,
+            "email": obj.email,
         }
-    
+
     def get_source_info(self, obj):
         return {
-            "source": obj.source,
-            "source_form": obj.source_form,
+            "source": obj.delivery_channel,
+            "product_type": obj.product_type,
         }
 
     def get_timestamps(self, obj):
         return {
             "created_at": obj.created_at,
-            "modified_at": obj.updated_at,
+            "updated_at": obj.updated_at,
         }
+
     def get_assignment(self, obj):
         return {
-            # "role": obj.assigned_to.role.name if obj.assigned_to else None,
             "status": obj.status,
+            "stage": obj.stage,
             "progress_score": obj.progress_score,
+            "responsible": obj.responsible.id if obj.responsible else None,
         }
 
 class LeadSerializer(serializers.ModelSerializer):
@@ -72,14 +67,7 @@ class LeadSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
 
-class WorkflowStatsSerializer(serializers.Serializer):
-    leads = serializers.IntegerField()
-    documents = serializers.IntegerField()
-    quotation = serializers.IntegerField()
-    acceptance = serializers.IntegerField()
-    issuance = serializers.IntegerField()
-    billing = serializers.IntegerField()
-    claims = serializers.IntegerField()
+
 
 
     

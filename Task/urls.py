@@ -2,21 +2,22 @@ from django.urls import path
 
 from leads.views import lead_details,lead_list
 
-from .views import create_task, get_pending_tasks, lead_filter,list_task,completed_tasks
+from .views import get_full_filter_data, get_pending_tasks, get_pending_tasks, notification, lead_list
 from . import views  # Assuming your function is in views.py
 # ######  Akshaya  ######
 
 urlpatterns = [
-    # Workflow Statistics API
-    path('api/v1/workflow/stats', views.get_workflow_stats,name='workflow-stats'),
-    path("<int:lead_id>/tasks/",create_task),
-    path("export/",list_task),
-    path("tasks/completed/",completed_tasks),
+   
+    path("list/", lead_list),
+  
     path('<int:lead_id>/', lead_details),
    
-    # path('exports/',lead_list),
-    path('leads/', lead_filter),
-    path('pending-tasks/', views.get_pending_tasks, name='pending-tasks'),
+    path('filter/', get_full_filter_data),
     path('get_pending_tasks/',get_pending_tasks),
+    path('notification/',notification),
+    path('mark_all_read/', views.mark_all_notifications_read),
+    path('mark_read/<int:pk>/', views.mark_single_notification_read),
+    path('total_tasks/', views.Total_tasks),
+    path('workflow_dashboard/', views.workflow_dashboard),
 
 ]

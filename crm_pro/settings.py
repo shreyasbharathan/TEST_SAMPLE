@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'Policys',
     'Task',
     'invoice',
+    'quotes',
 ]
 
 MIDDLEWARE = [

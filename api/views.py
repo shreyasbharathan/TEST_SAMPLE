@@ -127,35 +127,17 @@ def list_roles(request):
 
 
 
-# @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
-# def change_password(request):
-#     serializer = ChangePasswordSerializer(data=request.data)
-
-#     if serializer.is_valid():
-#         user = request.user
-
-#         # Check old password
-#         if not user.check_password(serializer.validated_data['old_password']):
-#             return Response({"error": "Old password is incorrect"}, status=400)
-
-#         # Set new password
-#         user.set_password(serializer.validated_data['new_password'])
-#         user.save()
-
-#         return Response({"message": "Password updated successfully"})
-
-#     return Response(serializer.errors, status=400)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    serializer = ChangePasswordSerializer(data=request.data)
+    serializer = ChangePasswordSerializer(
+        data=request.data,
+        context={'request': request}
+    )
 
     if serializer.is_valid():
         user = request.user
-
-        # Set new password directly
         user.set_password(serializer.validated_data['new_password'])
         user.save()
 

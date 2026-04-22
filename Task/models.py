@@ -22,7 +22,6 @@ class Task(models.Model):
         ('High', 'High'),
     ]
 
-    # Primary Key and Basic Info
     title = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
 
@@ -68,3 +67,19 @@ class Task(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.status}"
+    
+
+
+
+    from django.db import models
+from django.contrib.auth.models import User
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255) # e.g., "You have 4 tasks for today"
+    message = models.TextField()             # e.g., "Please complete those tasks..."
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
